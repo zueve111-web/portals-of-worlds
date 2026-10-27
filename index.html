@@ -3,153 +3,181 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Порталы миров</title>
 <style>
-*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#07101b;font-family:Arial;color:white}
-canvas{display:block}
-#title{position:fixed;top:12px;left:0;width:100%;text-align:center;font-size:22px;font-weight:bold;text-shadow:0 2px 10px #000;pointer-events:none}
-#info{position:fixed;top:44px;width:100%;text-align:center;font-size:14px;text-shadow:0 2px 5px #000;pointer-events:none}
-#controls{position:fixed;bottom:20px;left:15px;right:15px;display:flex;justify-content:space-between;align-items:end;pointer-events:none}
-.pad{width:145px;height:145px;border-radius:50%;border:2px solid #ffffff66;background:#ffffff18;position:relative;pointer-events:auto;touch-action:none}
-#stick{width:58px;height:58px;background:#c5edffbb;border:2px solid white;border-radius:50%;position:absolute;left:41px;top:41px}
-.buttons{display:flex;gap:12px;align-items:end;pointer-events:auto}
-button{color:white;background:#172d46dd;border:2px solid #8de8ff;border-radius:50%;width:67px;height:67px;font-size:13px;font-weight:bold;touch-action:none}
-#jump{width:78px;height:78px;background:#1a8ccdcc}
-#hint{position:fixed;bottom:180px;width:100%;text-align:center;font-size:12px;color:#e5f8ff;text-shadow:0 2px 4px black;pointer-events:none}
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#071b2b;color:white;font-family:Arial;touch-action:none}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+#top{position:absolute;top:12px;width:100%;text-align:center;text-shadow:0 2px 8px #000;pointer-events:none}
+#name{font-size:23px;font-weight:bold}
+#world{margin-top:6px;font-size:14px}
+#help{position:absolute;top:80px;width:100%;text-align:center;font-size:12px;text-shadow:0 2px 5px black;pointer-events:none}
+#controls{position:absolute;bottom:20px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:end}
+#pad{width:138px;height:138px;border-radius:50%;background:#ffffff20;border:2px solid #ffffff88;position:relative;touch-action:none}
+#stick{position:absolute;width:55px;height:55px;left:39px;top:39px;border-radius:50%;background:#d7f4ffcc;border:2px solid white}
+#buttons{display:flex;gap:10px;align-items:end}
+button{border:2px solid #8ceaff;background:#112e49e8;color:white;border-radius:50%;width:68px;height:68px;font-weight:bold;font-size:11px;touch-action:none}
+#jump{width:76px;height:76px;background:#087bbbe8}
 </style>
 </head>
 <body>
-<div id="title">ПОРТАЛЫ МИРОВ</div>
-<div id="info">Земля • Мир 1 из 5</div>
-<div id="hint">Исследуй мир и найди светящийся портал</div>
+<canvas id="game"></canvas>
+<div id="top"><div id="name">ПОРТАЛЫ МИРОВ</div><div id="world">Земля • Мир 1 из 5</div></div>
+<div id="help">Исследуй мир. Найди портал и открой новую планету!</div>
 <div id="controls">
-<div class="pad" id="pad"><div id="stick"></div></div>
-<div class="buttons"><button id="portal">ПОРТАЛ</button><button id="jump">ПРЫЖОК</button></div>
+<div id="pad"><div id="stick"></div></div>
+<div id="buttons"><button id="change">СМЕНИТЬ<br>МИР</button><button id="jump">ПРЫЖОК</button></div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 (()=>{
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x8ad7ff);
-scene.fog=new THREE.Fog(0x8ad7ff,35,100);
-const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,300);
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xc5e8ff,0x354026,2));
-const sun=new THREE.DirectionalLight(0xffffff,2.4);
-sun.position.set(12,25,10);sun.castShadow=true;scene.add(sun);
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+let W,H,scale;
+function resize(){W=c.width=innerWidth*(devicePixelRatio||1);H=c.height=innerHeight*(devicePixelRatio||1);scale=devicePixelRatio||1;ctx.setTransform(scale,0,0,scale,0,0);W=innerWidth;H=innerHeight}
+addEventListener('resize',resize);resize();
 const worlds=[
-{name:"Земля",sky:0x8ad7ff,ground:0x428b43,accent:0x00ffff},
-{name:"Ледяная планета",sky:0x9bdfff,ground:0xb9e7f5,accent:0x55ffff},
-{name:"Джунгли",sky:0x194d39,ground:0x23632d,accent:0x62ff7c},
-{name:"Вулканическая планета",sky:0x35191c,ground:0x292326,accent:0xff4a16},
-{name:"Пустыня",sky:0xf7bd76,ground:0xd6ad65,accent:0xffd34e}
+{name:'Земля',sky:'#54b9ed',far:'#537f98',ground:'#397b38',accent:'#35ffff',tree:'#218344'},
+{name:'Ледяная планета',sky:'#a1e5ff',far:'#719eb7',ground:'#d6f4ff',accent:'#5cf7ff',tree:'#e7ffff'},
+{name:'Джунгли',sky:'#174b42',far:'#286e54',ground:'#174c2a',accent:'#8aff69',tree:'#277338'},
+{name:'Вулканическая планета',sky:'#391b29',far:'#79352d',ground:'#29252a',accent:'#ff5b24',tree:'#a63a21'},
+{name:'Пустыня',sky:'#f4b96c',far:'#bd8751',ground:'#d7ad65',accent:'#fff078',tree:'#9d793f'}
 ];
-let worldIndex=0,portal;
-const player=new THREE.Group();scene.add(player);
-const body=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.85,4,8),new THREE.MeshStandardMaterial({color:0x2277ff,roughness:.5}));
-body.position.y=1;body.castShadow=true;player.add(body);
-const head=new THREE.Mesh(new THREE.SphereGeometry(.29,16,12),new THREE.MeshStandardMaterial({color:0xffd0a0}));
-head.position.y=1.75;player.add(head);
-const groundMat=new THREE.MeshStandardMaterial({color:0x428b43,roughness:1});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(220,220),groundMat);
-ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
-const objects=new THREE.Group();scene.add(objects);
-function clearWorld(){while(objects.children.length){const o=objects.children.pop();o.traverse?.(x=>{x.geometry?.dispose();if(x.material){if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material.dispose()}});objects.remove(o)}}
-function makeTree(x,z,s=1){
-const g=new THREE.Group();
-const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.16*s,.24*s,1.6*s,7),new THREE.MeshStandardMaterial({color:worldIndex===1?0x7696a0:0x68432a}));
-trunk.position.y=.8*s;trunk.castShadow=true;g.add(trunk);
-const colors=[0x267a3a,0x348f42,0x165a36];
-for(let i=0;i<3;i++){const mat=new THREE.MeshStandardMaterial({color:worldIndex===1?0xe4faff:worldIndex===3?0x69251e:colors[i]});const cone=new THREE.Mesh(new THREE.ConeGeometry((1.1-i*.2)*s,1.8*s,7),mat);cone.position.y=(1.7+i*.55)*s;cone.castShadow=true;g.add(cone)}
-g.position.set(x,0,z);objects.add(g);
+let wi=0,x=0,z=0,angle=0,vy=0,jumping=false,moveX=0,moveY=0;
+let scenery=[];
+function makeScenery(){
+scenery=[];
+let seed=wi*987+2345;
+function rand(){seed=(seed*16807)%2147483647;return seed/2147483647}
+for(let i=0;i<110;i++){
+scenery.push({x:(rand()-.5)*110,z:-5-rand()*105,size:.6+rand()*1.6,type:rand()});
 }
-function buildWorld(){
-clearWorld();
-const w=worlds[worldIndex];
-scene.background.setHex(w.sky);scene.fog.color.setHex(w.sky);groundMat.color.setHex(w.ground);
-groundMat.needsUpdate=true;
-for(let i=0;i<90;i++){
-const x=(Math.random()-.5)*110,z=(Math.random()-.5)*110;
-if(Math.hypot(x,z)<7)continue;
-if(worldIndex===0||worldIndex===2)makeTree(x,z,.7+Math.random()*.9);
-else if(worldIndex===1){
-const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.5+Math.random()*1.2),new THREE.MeshStandardMaterial({color:0xc9efff,metalness:.25,roughness:.3}));
-rock.position.set(x,.5,z);rock.castShadow=true;objects.add(rock);
-}else if(worldIndex===3){
-const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.7+Math.random()),new THREE.MeshStandardMaterial({color:0x352b2b,roughness:1}));
-rock.position.set(x,.6,z);rock.castShadow=true;objects.add(rock);
+}
+makeScenery();
+function switchWorld(){wi=(wi+1)%worlds.length;x=0;z=0;makeScenery();document.getElementById('world').textContent=worlds[wi].name+' • Мир '+(wi+1)+' из 5'}
+document.getElementById('change').onclick=switchWorld;
+function project(wx,wy,wz){
+const w=wx-x,dz=wz-z;
+const right=w*Math.cos(angle)+dz*Math.sin(angle);
+const depth=w*Math.sin(angle)-dz*Math.cos(angle)+7;
+if(depth<.4)return null;
+const f=Math.min(W,H)*.88;
+return {x:W/2+right*f/depth,y:H*.43+(3.2-wy)*f/depth,depth,s:f/depth};
+}
+function polygon(points,color){
+ctx.fillStyle=color;ctx.beginPath();
+points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+ctx.closePath();ctx.fill();
+}
+function drawSky(w){
+let g=ctx.createLinearGradient(0,0,0,H*.8);
+g.addColorStop(0,w.sky);g.addColorStop(1,w.far);
+ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ctx.fillStyle='#ffffff55';ctx.beginPath();ctx.arc(W*.78,H*.18,Math.min(W,H)*.055,0,Math.PI*2);ctx.fill();
+polygon([{x:0,y:H*.43},{x:W*.1,y:H*.32},{x:W*.23,y:H*.4},{x:W*.38,y:H*.28},{x:W*.52,y:H*.4},{x:W*.7,y:H*.31},{x:W*.85,y:H*.39},{x:W,y:H*.3},{x:W,y:H*.58},{x:0,y:H*.58}],w.far);
+polygon([{x:0,y:H*.46},{x:W*.2,y:H*.42},{x:W*.34,y:H*.48},{x:W*.52,y:H*.4},{x:W*.72,y:H*.47},{x:W,y:H*.4},{x:W,y:H*.65},{x:0,y:H*.65}],w.ground);
+ctx.fillStyle=w.ground;ctx.fillRect(0,H*.49,W,H*.51);
+}
+function drawTree(o,w){
+const p=project(o.x,0,o.z);if(!p||p.s<1||p.s>180)return;
+const h=o.size*p.s;
+if(wi===1){
+ctx.fillStyle='#dffaff';ctx.beginPath();ctx.moveTo(p.x,p.y-h*2);ctx.lineTo(p.x-h*.7,p.y);ctx.lineTo(p.x+h*.7,p.y);ctx.fill();
+ctx.fillStyle='#b7e4f2';ctx.fillRect(p.x-h*.12,p.y-h*.25,h*.24,h*.25);
+}else if(wi===3){
+ctx.fillStyle='#362b2b';ctx.beginPath();ctx.moveTo(p.x,p.y-h*1.8);ctx.lineTo(p.x-h*.75,p.y);ctx.lineTo(p.x+h*.75,p.y);ctx.fill();
+ctx.fillStyle='#ff4c19';ctx.fillRect(p.x-h*.12,p.y-h*.35,h*.24,h*.35);
+}else if(wi===4){
+ctx.fillStyle='#725234';ctx.fillRect(p.x-h*.1,p.y-h*.6,h*.2,h*.6);
+ctx.fillStyle=w.tree;ctx.fillRect(p.x-h*.6,p.y-h*.65,h*1.2,h*.16);
 }else{
-const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.6+Math.random()*1.6),new THREE.MeshStandardMaterial({color:0xc49a56}));
-rock.position.set(x,.5,z);objects.add(rock);
-}}
-const ring=new THREE.Mesh(new THREE.TorusGeometry(2, .18,12,48),new THREE.MeshStandardMaterial({color:w.accent,emissive:w.accent,emissiveIntensity:2,metalness:.3,roughness:.2}));
-ring.position.set(0,2.5,-13);ring.castShadow=true;objects.add(ring);portal=ring;
-const inner=new THREE.Mesh(new THREE.CircleGeometry(1.8,48),new THREE.MeshBasicMaterial({color:w.accent,transparent:true,opacity:.25,side:THREE.DoubleSide}));
-inner.position.set(0,2.5,-13);objects.add(inner);
-const base=new THREE.Mesh(new THREE.CylinderGeometry(2.8,3.2,.4,32),new THREE.MeshStandardMaterial({color:0x273448,metalness:.7,roughness:.3}));
-base.position.set(0,.2,-13);objects.add(base);
-document.getElementById('info').textContent=w.name+" • Мир "+(worldIndex+1)+" из "+worlds.length;
+ctx.fillStyle='#65462d';ctx.fillRect(p.x-h*.12,p.y-h*.8,h*.24,h*.8);
+ctx.fillStyle=o.type>.5?w.tree:'#318a42';
+ctx.beginPath();ctx.moveTo(p.x,p.y-h*2.2);ctx.lineTo(p.x-h*.8,p.y-h*.45);ctx.lineTo(p.x+h*.8,p.y-h*.45);ctx.closePath();ctx.fill();
+ctx.beginPath();ctx.moveTo(p.x,p.y-h*1.7);ctx.lineTo(p.x-h*.95,p.y-h*.05);ctx.lineTo(p.x+h*.95,p.y-h*.05);ctx.closePath();ctx.fill();
 }
-buildWorld();
-player.position.set(0,0,3);
-let moveX=0,moveY=0,vy=0,onGround=true,angle=0;
+}
+function drawPortal(w){
+const p=project(0,0,z-18);
+if(!p)return;
+const r=Math.min(150,2.1*p.s);
+ctx.save();ctx.shadowColor=w.accent;ctx.shadowBlur=24;
+ctx.strokeStyle=w.accent;ctx.lineWidth=Math.max(3,r*.09);
+ctx.beginPath();ctx.ellipse(p.x,p.y-r*1.05,r*.68,r*1.05,0,0,Math.PI*2);ctx.stroke();
+ctx.globalAlpha=.23;ctx.fillStyle=w.accent;
+ctx.beginPath();ctx.ellipse(p.x,p.y-r*1.05,r*.64,r,0,0,Math.PI*2);ctx.fill();
+ctx.restore();
+ctx.fillStyle='#ffffff';ctx.font='bold 12px Arial';ctx.textAlign='center';
+ctx.fillText('ПОРТАЛ',p.x,p.y-r*2.3);
+}
+function drawPlayer(){
+const px=W/2,py=H*.74+(jumping?vy*3:0);
+ctx.save();ctx.translate(px,py);
+ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(0,4,19,6,0,0,7);ctx.fill();
+ctx.fillStyle='#172f59';ctx.fillRect(-12,-40,24,29);
+ctx.fillStyle='#247bff';ctx.fillRect(-15,-39,30,24);
+ctx.fillStyle='#ffd0a0';ctx.beginPath();ctx.arc(0,-49,11,0,7);ctx.fill();
+ctx.fillStyle='#172b44';ctx.fillRect(-10,-58,20,6);
+ctx.fillStyle='#182943';ctx.fillRect(-12,-12,9,14);ctx.fillRect(3,-12,9,14);
+ctx.restore();
+}
+function draw(){
+const w=worlds[wi];drawSky(w);
+const horizon=H*.48;
+ctx.save();ctx.beginPath();ctx.rect(0,horizon,W,H-horizon);ctx.clip();
+for(let i=1;i<18;i++){
+const y=horizon+(i/18)**2*H*.8;
+ctx.strokeStyle='#ffffff16';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+}
+for(let i=-10;i<=10;i++){
+const p=project(i*3,0,z-35);
+if(p){ctx.strokeStyle='#ffffff12';ctx.beginPath();ctx.moveTo(W/2+i*7,H);ctx.lineTo(p.x,p.y);ctx.stroke()}
+}
+scenery.slice().sort((a,b)=>b.z-a.z).forEach(o=>drawTree(o,w));
+drawPortal(w);
+ctx.restore();drawPlayer();
+}
+let last=performance.now();
+function frame(now){
+const dt=Math.min((now-last)/1000,.04);last=now;
+const forward=-moveY,right=moveX;
+if(Math.abs(forward)+Math.abs(right)>.05){
+const dx=Math.sin(angle)*forward+Math.cos(angle)*right;
+const dz=-Math.cos(angle)*forward+Math.sin(angle)*right;
+const len=Math.hypot(dx,dz)||1;
+x+=dx/len*10*dt;z+=dz/len*10*dt;
+angle=Math.atan2(dx/len,-dz/len);
+}
+if(jumping){vy-=18*dt; if(vy< -5){jumping=false;vy=0}}
+draw();requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
 const pad=document.getElementById('pad'),stick=document.getElementById('stick');
-let dragging=false;
-function joystick(e){
-const r=pad.getBoundingClientRect(),t=e.touches?e.touches[0]:e;
-let x=t.clientX-r.left-r.width/2,y=t.clientY-r.top-r.height/2;
-const max=43,len=Math.hypot(x,y);
-if(len>max){x=x/len*max;y=y/len*max}
-stick.style.left=(r.width/2-29+x)+'px';stick.style.top=(r.height/2-29+y)+'px';
-moveX=x/max;moveY=y/max;
+let drag=false;
+function steer(e){
+const r=pad.getBoundingClientRect(),t=e;
+let dx=t.clientX-r.left-r.width/2,dy=t.clientY-r.top-r.height/2;
+const m=Math.hypot(dx,dy),max=40;
+if(m>max){dx=dx/m*max;dy=dy/m*max}
+stick.style.left=(r.width/2-27+dx)+'px';stick.style.top=(r.height/2-27+dy)+'px';
+moveX=dx/max;moveY=dy/max;
 }
-pad.addEventListener('pointerdown',e=>{dragging=true;pad.setPointerCapture(e.pointerId);joystick(e)});
-pad.addEventListener('pointermove',e=>{if(dragging)joystick(e)});
-function stopStick(){dragging=false;moveX=moveY=0;stick.style.left='41px';stick.style.top='41px'}
-pad.addEventListener('pointerup',stopStick);pad.addEventListener('pointercancel',stopStick);
-function jump(){if(onGround){vy=8;onGround=false}}
-document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();jump()});
-document.getElementById('portal').addEventListener('click',()=>{
-worldIndex=(worldIndex+1)%worlds.length;buildWorld();player.position.set(0,0,3);
-});
-window.addEventListener('keydown',e=>{
+pad.addEventListener('pointerdown',e=>{drag=true;pad.setPointerCapture(e.pointerId);steer(e)});
+pad.addEventListener('pointermove',e=>{if(drag)steer(e)});
+function release(){drag=false;moveX=moveY=0;stick.style.left='39px';stick.style.top='39px'}
+pad.addEventListener('pointerup',release);pad.addEventListener('pointercancel',release);
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();if(!jumping){jumping=true;vy=5}});
+addEventListener('keydown',e=>{
 if(e.key==='ArrowUp'||e.key==='w')moveY=-1;
 if(e.key==='ArrowDown'||e.key==='s')moveY=1;
 if(e.key==='ArrowLeft'||e.key==='a')moveX=-1;
 if(e.key==='ArrowRight'||e.key==='d')moveX=1;
-if(e.code==='Space')jump();
-if(e.key==='e')document.getElementById('portal').click();
+if(e.code==='Space'&&!jumping){jumping=true;vy=5}
+if(e.key==='e')switchWorld();
 });
-window.addEventListener('keyup',e=>{
+addEventListener('keyup',e=>{
 if(['ArrowUp','ArrowDown','w','s'].includes(e.key))moveY=0;
 if(['ArrowLeft','ArrowRight','a','d'].includes(e.key))moveX=0;
 });
-let last=performance.now();
-function animate(now){
-requestAnimationFrame(animate);
-const dt=Math.min((now-last)/1000,.04);last=now;
-const forward=new THREE.Vector3(-Math.sin(angle),0,-Math.cos(angle));
-const right=new THREE.Vector3(Math.cos(angle),0,-Math.sin(angle));
-const direction=forward.clone().multiplyScalar(-moveY).add(right.multiplyScalar(moveX));
-if(direction.lengthSq()>0){direction.normalize();player.position.addScaledVector(direction,7*dt);angle=Math.atan2(-direction.x,-direction.z);player.rotation.y=angle}
-vy-=20*dt;player.position.y+=vy*dt;
-if(player.position.y<0){player.position.y=0;vy=0;onGround=true}
-player.position.x=THREE.MathUtils.clamp(player.position.x,-90,90);
-player.position.z=THREE.MathUtils.clamp(player.position.z,-90,90);
-const target=new THREE.Vector3(player.position.x,player.position.y+2,player.position.z);
-const camPos=new THREE.Vector3(player.position.x+Math.sin(angle)*7,player.position.y+4,player.position.z+Math.cos(angle)*7);
-camera.position.lerp(camPos,.12);camera.lookAt(target);
-if(portal)portal.rotation.z=Math.sin(now*.001)*.08;
-renderer.render(scene,camera);
-}
-requestAnimationFrame(animate);
-window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 })();
 </script>
 </body>
