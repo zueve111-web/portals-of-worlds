@@ -7,176 +7,170 @@
 <title>Порталы миров</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;overflow:hidden;background:#071b2b;color:white;font-family:Arial;touch-action:none}
-canvas{position:absolute;inset:0;width:100%;height:100%}
-#top{position:absolute;top:12px;width:100%;text-align:center;text-shadow:0 2px 8px #000;pointer-events:none}
-#name{font-size:23px;font-weight:bold}
-#world{margin-top:6px;font-size:14px}
-#help{position:absolute;top:80px;width:100%;text-align:center;font-size:12px;text-shadow:0 2px 5px black;pointer-events:none}
-#controls{position:absolute;bottom:20px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:end}
-#pad{width:138px;height:138px;border-radius:50%;background:#ffffff20;border:2px solid #ffffff88;position:relative;touch-action:none}
-#stick{position:absolute;width:55px;height:55px;left:39px;top:39px;border-radius:50%;background:#d7f4ffcc;border:2px solid white}
-#buttons{display:flex;gap:10px;align-items:end}
-button{border:2px solid #8ceaff;background:#112e49e8;color:white;border-radius:50%;width:68px;height:68px;font-weight:bold;font-size:11px;touch-action:none}
-#jump{width:76px;height:76px;background:#087bbbe8}
+body{margin:0;overflow:hidden;background:#142c3d;color:white;font-family:Arial;touch-action:none}
+canvas{display:block;width:100vw;height:100vh}
+#top{position:fixed;top:12px;left:0;width:100%;text-align:center;text-shadow:0 2px 5px #000;pointer-events:none}
+#top b{font-size:23px}
+#world{margin-top:5px}
+#controls{position:fixed;bottom:18px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:end}
+#pad{width:130px;height:130px;border:2px solid #ffffff88;background:#ffffff22;border-radius:50%;position:relative;touch-action:none}
+#stick{position:absolute;width:52px;height:52px;left:37px;top:37px;background:#d6f5ffdd;border-radius:50%;border:2px solid white}
+button{width:68px;height:68px;border-radius:50%;border:2px solid #82edff;background:#124d70;color:white;font-weight:bold;font-size:11px;touch-action:manipulation}
+#buttons{display:flex;gap:9px;align-items:end}
+#jump{width:76px;height:76px;background:#087cb9}
 </style>
 </head>
 <body>
-<canvas id="game"></canvas>
-<div id="top"><div id="name">ПОРТАЛЫ МИРОВ</div><div id="world">Земля • Мир 1 из 5</div></div>
-<div id="help">Исследуй мир. Найди портал и открой новую планету!</div>
+<canvas id="c"></canvas>
+<div id="top"><b>ПОРТАЛЫ МИРОВ</b><div id="world">Земля • Мир 1 из 5</div></div>
 <div id="controls">
 <div id="pad"><div id="stick"></div></div>
-<div id="buttons"><button id="change">СМЕНИТЬ<br>МИР</button><button id="jump">ПРЫЖОК</button></div>
+<div id="buttons"><button id="next">СМЕНИТЬ<br>МИР</button><button id="jump">ПРЫЖОК</button></div>
 </div>
 <script>
-(()=>{
-const c=document.getElementById('game'),ctx=c.getContext('2d');
-let W,H,scale;
-function resize(){W=c.width=innerWidth*(devicePixelRatio||1);H=c.height=innerHeight*(devicePixelRatio||1);scale=devicePixelRatio||1;ctx.setTransform(scale,0,0,scale,0,0);W=innerWidth;H=innerHeight}
+(function(){
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+let W=0,H=0;
+function resize(){
+W=innerWidth;H=innerHeight;
+canvas.width=Math.round(W*(devicePixelRatio||1));
+canvas.height=Math.round(H*(devicePixelRatio||1));
+ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
+}
 addEventListener('resize',resize);resize();
+
 const worlds=[
-{name:'Земля',sky:'#54b9ed',far:'#537f98',ground:'#397b38',accent:'#35ffff',tree:'#218344'},
-{name:'Ледяная планета',sky:'#a1e5ff',far:'#719eb7',ground:'#d6f4ff',accent:'#5cf7ff',tree:'#e7ffff'},
-{name:'Джунгли',sky:'#174b42',far:'#286e54',ground:'#174c2a',accent:'#8aff69',tree:'#277338'},
-{name:'Вулканическая планета',sky:'#391b29',far:'#79352d',ground:'#29252a',accent:'#ff5b24',tree:'#a63a21'},
-{name:'Пустыня',sky:'#f4b96c',far:'#bd8751',ground:'#d7ad65',accent:'#fff078',tree:'#9d793f'}
+['Земля','#69c9ff','#317c3d','#22743b','#35ffff'],
+['Ледяная планета','#9ce9ff','#bcecf4','#e9ffff','#52faff'],
+['Джунгли','#174b36','#22582b','#267c37','#83ff65'],
+['Вулканическая планета','#351823','#30252a','#852c1b','#ff5425'],
+['Пустыня','#f5bd79','#cba15d','#a27c42','#ffe26c']
 ];
-let wi=0,x=0,z=0,angle=0,vy=0,jumping=false,moveX=0,moveY=0;
-let scenery=[];
-function makeScenery(){
-scenery=[];
-let seed=wi*987+2345;
-function rand(){seed=(seed*16807)%2147483647;return seed/2147483647}
-for(let i=0;i<110;i++){
-scenery.push({x:(rand()-.5)*110,z:-5-rand()*105,size:.6+rand()*1.6,type:rand()});
+let wi=0,px=0,pz=0,dir=0,dx=0,dy=0,alt=0,up=0;
+let objects=[];
+function randomWorld(){
+objects=[];
+let seed=wi*1009+89;
+function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+for(let i=0;i<90;i++){
+let x=(rnd()-.5)*100,z=-8-rnd()*100;
+objects.push({x,z,s:.5+rnd()*1.5,t:rnd()});
 }
 }
-makeScenery();
-function switchWorld(){wi=(wi+1)%worlds.length;x=0;z=0;makeScenery();document.getElementById('world').textContent=worlds[wi].name+' • Мир '+(wi+1)+' из 5'}
-document.getElementById('change').onclick=switchWorld;
-function project(wx,wy,wz){
-const w=wx-x,dz=wz-z;
-const right=w*Math.cos(angle)+dz*Math.sin(angle);
-const depth=w*Math.sin(angle)-dz*Math.cos(angle)+7;
-if(depth<.4)return null;
-const f=Math.min(W,H)*.88;
-return {x:W/2+right*f/depth,y:H*.43+(3.2-wy)*f/depth,depth,s:f/depth};
+randomWorld();
+function changeWorld(){
+wi=(wi+1)%worlds.length;px=0;pz=0;randomWorld();
+document.getElementById('world').textContent=worlds[wi][0]+' • Мир '+(wi+1)+' из 5';
 }
-function polygon(points,color){
+document.getElementById('next').onclick=changeWorld;
+
+function project(x,z){
+let a=x-px,b=z-pz;
+let r=a*Math.cos(dir)+b*Math.sin(dir);
+let d=a*Math.sin(dir)-b*Math.cos(dir)+9;
+if(d<.5)return null;
+let f=Math.min(W,H)*.85;
+return {x:W/2+r*f/d,y:H*.43+3.2*f/d,s:f/d,d};
+}
+function poly(points,color){
 ctx.fillStyle=color;ctx.beginPath();
-points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
 ctx.closePath();ctx.fill();
 }
-function drawSky(w){
-let g=ctx.createLinearGradient(0,0,0,H*.8);
-g.addColorStop(0,w.sky);g.addColorStop(1,w.far);
-ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-ctx.fillStyle='#ffffff55';ctx.beginPath();ctx.arc(W*.78,H*.18,Math.min(W,H)*.055,0,Math.PI*2);ctx.fill();
-polygon([{x:0,y:H*.43},{x:W*.1,y:H*.32},{x:W*.23,y:H*.4},{x:W*.38,y:H*.28},{x:W*.52,y:H*.4},{x:W*.7,y:H*.31},{x:W*.85,y:H*.39},{x:W,y:H*.3},{x:W,y:H*.58},{x:0,y:H*.58}],w.far);
-polygon([{x:0,y:H*.46},{x:W*.2,y:H*.42},{x:W*.34,y:H*.48},{x:W*.52,y:H*.4},{x:W*.72,y:H*.47},{x:W,y:H*.4},{x:W,y:H*.65},{x:0,y:H*.65}],w.ground);
-ctx.fillStyle=w.ground;ctx.fillRect(0,H*.49,W,H*.51);
+function render(){
+const w=worlds[wi];
+let sky=ctx.createLinearGradient(0,0,0,H);
+sky.addColorStop(0,w[1]);sky.addColorStop(.48,w[1]);sky.addColorStop(1,w[2]);
+ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+
+poly([[0,H*.47],[W*.13,H*.33],[W*.24,H*.42],[W*.4,H*.3],[W*.55,H*.43],[W*.75,H*.32],[W,H*.42],[W,H*.63],[0,H*.63]],w[2]);
+ctx.fillStyle=w[2];ctx.fillRect(0,H*.49,W,H*.51);
+
+ctx.save();ctx.beginPath();ctx.rect(0,H*.47,W,H*.53);ctx.clip();
+for(let i=0;i<14;i++){
+let y=H*.47+(i/14)*(i/14)*H*.8;
+ctx.strokeStyle='#ffffff20';ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
 }
-function drawTree(o,w){
-const p=project(o.x,0,o.z);if(!p||p.s<1||p.s>180)return;
-const h=o.size*p.s;
-if(wi===1){
-ctx.fillStyle='#dffaff';ctx.beginPath();ctx.moveTo(p.x,p.y-h*2);ctx.lineTo(p.x-h*.7,p.y);ctx.lineTo(p.x+h*.7,p.y);ctx.fill();
-ctx.fillStyle='#b7e4f2';ctx.fillRect(p.x-h*.12,p.y-h*.25,h*.24,h*.25);
+objects.slice().sort((a,b)=>b.z-a.z).forEach(o=>{
+let p=project(o.x,o.z);if(!p||p.s<1||p.s>150)return;
+let s=o.s*p.s;
+if(wi===0||wi===2){
+ctx.fillStyle='#65452d';ctx.fillRect(p.x-s*.12,p.y-s*.7,s*.24,s*.7);
+ctx.fillStyle=o.t>.5?w[3]:'#318444';
+poly([[p.x,p.y-s*2],[p.x-s*.75,p.y-s*.2],[p.x+s*.75,p.y-s*.2]],w[3]);
+poly([[p.x,p.y-s*1.5],[p.x-s,p.y],[p.x+s,p.y]],w[3]);
+}else if(wi===1){
+poly([[p.x,p.y-s*2],[p.x-s*.8,p.y],[p.x+s*.8,p.y]],'#e5fbff');
+ctx.fillStyle='#b2e5f1';ctx.fillRect(p.x-s*.12,p.y-s*.4,s*.24,s*.4);
 }else if(wi===3){
-ctx.fillStyle='#362b2b';ctx.beginPath();ctx.moveTo(p.x,p.y-h*1.8);ctx.lineTo(p.x-h*.75,p.y);ctx.lineTo(p.x+h*.75,p.y);ctx.fill();
-ctx.fillStyle='#ff4c19';ctx.fillRect(p.x-h*.12,p.y-h*.35,h*.24,h*.35);
-}else if(wi===4){
-ctx.fillStyle='#725234';ctx.fillRect(p.x-h*.1,p.y-h*.6,h*.2,h*.6);
-ctx.fillStyle=w.tree;ctx.fillRect(p.x-h*.6,p.y-h*.65,h*1.2,h*.16);
+poly([[p.x,p.y-s*1.8],[p.x-s,p.y],[p.x+s,p.y]],'#3c3030');
+ctx.fillStyle='#ff5523';ctx.fillRect(p.x-s*.12,p.y-s*.4,s*.24,s*.4);
 }else{
-ctx.fillStyle='#65462d';ctx.fillRect(p.x-h*.12,p.y-h*.8,h*.24,h*.8);
-ctx.fillStyle=o.type>.5?w.tree:'#318a42';
-ctx.beginPath();ctx.moveTo(p.x,p.y-h*2.2);ctx.lineTo(p.x-h*.8,p.y-h*.45);ctx.lineTo(p.x+h*.8,p.y-h*.45);ctx.closePath();ctx.fill();
-ctx.beginPath();ctx.moveTo(p.x,p.y-h*1.7);ctx.lineTo(p.x-h*.95,p.y-h*.05);ctx.lineTo(p.x+h*.95,p.y-h*.05);ctx.closePath();ctx.fill();
+ctx.fillStyle='#75512d';ctx.fillRect(p.x-s*.1,p.y-s*.7,s*.2,s*.7);
+ctx.fillStyle='#b99757';ctx.fillRect(p.x-s*.65,p.y-s*.75,s*1.3,s*.18);
 }
-}
-function drawPortal(w){
-const p=project(0,0,z-18);
-if(!p)return;
-const r=Math.min(150,2.1*p.s);
-ctx.save();ctx.shadowColor=w.accent;ctx.shadowBlur=24;
-ctx.strokeStyle=w.accent;ctx.lineWidth=Math.max(3,r*.09);
-ctx.beginPath();ctx.ellipse(p.x,p.y-r*1.05,r*.68,r*1.05,0,0,Math.PI*2);ctx.stroke();
-ctx.globalAlpha=.23;ctx.fillStyle=w.accent;
-ctx.beginPath();ctx.ellipse(p.x,p.y-r*1.05,r*.64,r,0,0,Math.PI*2);ctx.fill();
+});
+
+let portal=project(0,pz-18);
+if(portal){
+let r=Math.min(130,portal.s*2.2);
+ctx.save();ctx.shadowBlur=25;ctx.shadowColor=w[4];ctx.strokeStyle=w[4];ctx.lineWidth=5;
+ctx.beginPath();ctx.ellipse(portal.x,portal.y-r,r*.67,r,0,0,Math.PI*2);ctx.stroke();
+ctx.globalAlpha=.25;ctx.fillStyle=w[4];ctx.fill();
 ctx.restore();
-ctx.fillStyle='#ffffff';ctx.font='bold 12px Arial';ctx.textAlign='center';
-ctx.fillText('ПОРТАЛ',p.x,p.y-r*2.3);
+ctx.fillStyle='white';ctx.font='bold 13px Arial';ctx.textAlign='center';
+ctx.fillText('ПОРТАЛ',portal.x,portal.y-r*2.2);
 }
-function drawPlayer(){
-const px=W/2,py=H*.74+(jumping?vy*3:0);
-ctx.save();ctx.translate(px,py);
-ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(0,4,19,6,0,0,7);ctx.fill();
-ctx.fillStyle='#172f59';ctx.fillRect(-12,-40,24,29);
-ctx.fillStyle='#247bff';ctx.fillRect(-15,-39,30,24);
-ctx.fillStyle='#ffd0a0';ctx.beginPath();ctx.arc(0,-49,11,0,7);ctx.fill();
-ctx.fillStyle='#172b44';ctx.fillRect(-10,-58,20,6);
-ctx.fillStyle='#182943';ctx.fillRect(-12,-12,9,14);ctx.fillRect(3,-12,9,14);
 ctx.restore();
-}
-function draw(){
-const w=worlds[wi];drawSky(w);
-const horizon=H*.48;
-ctx.save();ctx.beginPath();ctx.rect(0,horizon,W,H-horizon);ctx.clip();
-for(let i=1;i<18;i++){
-const y=horizon+(i/18)**2*H*.8;
-ctx.strokeStyle='#ffffff16';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
-}
-for(let i=-10;i<=10;i++){
-const p=project(i*3,0,z-35);
-if(p){ctx.strokeStyle='#ffffff12';ctx.beginPath();ctx.moveTo(W/2+i*7,H);ctx.lineTo(p.x,p.y);ctx.stroke()}
-}
-scenery.slice().sort((a,b)=>b.z-a.z).forEach(o=>drawTree(o,w));
-drawPortal(w);
-ctx.restore();drawPlayer();
+
+let y=H*.74-alt;
+ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(W/2,H*.75,20,7,0,0,7);ctx.fill();
+ctx.fillStyle='#172c4d';ctx.fillRect(W/2-12,y-37,24,28);
+ctx.fillStyle='#187cff';ctx.fillRect(W/2-15,y-39,30,22);
+ctx.fillStyle='#ffd1a3';ctx.beginPath();ctx.arc(W/2,y-48,11,0,7);ctx.fill();
+ctx.fillStyle='#19283c';ctx.fillRect(W/2-10,y-59,20,6);
 }
 let last=performance.now();
-function frame(now){
-const dt=Math.min((now-last)/1000,.04);last=now;
-const forward=-moveY,right=moveX;
-if(Math.abs(forward)+Math.abs(right)>.05){
-const dx=Math.sin(angle)*forward+Math.cos(angle)*right;
-const dz=-Math.cos(angle)*forward+Math.sin(angle)*right;
-const len=Math.hypot(dx,dz)||1;
-x+=dx/len*10*dt;z+=dz/len*10*dt;
-angle=Math.atan2(dx/len,-dz/len);
+function loop(now){
+let dt=Math.min((now-last)/1000,.04);last=now;
+if(Math.abs(dx)+Math.abs(dy)>.04){
+let fx=-dy,rx=dx;
+let vx=Math.sin(dir)*fx+Math.cos(dir)*rx;
+let vz=-Math.cos(dir)*fx+Math.sin(dir)*rx;
+let n=Math.hypot(vx,vz)||1;
+px+=vx/n*8*dt;pz+=vz/n*8*dt;
+dir=Math.atan2(-vx/n,vz/n)+Math.PI;
 }
-if(jumping){vy-=18*dt; if(vy< -5){jumping=false;vy=0}}
-draw();requestAnimationFrame(frame);
+if(up){alt+=up*dt*10;up-=20*dt;if(alt<0){alt=0;up=0}}
+render();requestAnimationFrame(loop);
 }
-requestAnimationFrame(frame);
+requestAnimationFrame(loop);
+
 const pad=document.getElementById('pad'),stick=document.getElementById('stick');
-let drag=false;
-function steer(e){
-const r=pad.getBoundingClientRect(),t=e;
-let dx=t.clientX-r.left-r.width/2,dy=t.clientY-r.top-r.height/2;
-const m=Math.hypot(dx,dy),max=40;
-if(m>max){dx=dx/m*max;dy=dy/m*max}
-stick.style.left=(r.width/2-27+dx)+'px';stick.style.top=(r.height/2-27+dy)+'px';
-moveX=dx/max;moveY=dy/max;
+let active=false;
+function move(e){
+let r=pad.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
+let n=Math.hypot(x,y),m=39;if(n>m){x=x/n*m;y=y/n*m}
+stick.style.left=(r.width/2-26+x)+'px';stick.style.top=(r.height/2-26+y)+'px';
+dx=x/m;dy=y/m;
 }
-pad.addEventListener('pointerdown',e=>{drag=true;pad.setPointerCapture(e.pointerId);steer(e)});
-pad.addEventListener('pointermove',e=>{if(drag)steer(e)});
-function release(){drag=false;moveX=moveY=0;stick.style.left='39px';stick.style.top='39px'}
+function release(){active=false;dx=dy=0;stick.style.left='37px';stick.style.top='37px'}
+pad.addEventListener('pointerdown',e=>{active=true;pad.setPointerCapture(e.pointerId);move(e)});
+pad.addEventListener('pointermove',e=>{if(active)move(e)});
 pad.addEventListener('pointerup',release);pad.addEventListener('pointercancel',release);
-document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();if(!jumping){jumping=true;vy=5}});
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();if(alt===0)up=6});
 addEventListener('keydown',e=>{
-if(e.key==='ArrowUp'||e.key==='w')moveY=-1;
-if(e.key==='ArrowDown'||e.key==='s')moveY=1;
-if(e.key==='ArrowLeft'||e.key==='a')moveX=-1;
-if(e.key==='ArrowRight'||e.key==='d')moveX=1;
-if(e.code==='Space'&&!jumping){jumping=true;vy=5}
-if(e.key==='e')switchWorld();
+if(e.key==='ArrowUp'||e.key==='w')dy=-1;
+if(e.key==='ArrowDown'||e.key==='s')dy=1;
+if(e.key==='ArrowLeft'||e.key==='a')dx=-1;
+if(e.key==='ArrowRight'||e.key==='d')dx=1;
+if(e.code==='Space'&&alt===0)up=6;
+if(e.key==='e')changeWorld();
 });
 addEventListener('keyup',e=>{
-if(['ArrowUp','ArrowDown','w','s'].includes(e.key))moveY=0;
-if(['ArrowLeft','ArrowRight','a','d'].includes(e.key))moveX=0;
+if(['ArrowUp','ArrowDown','w','s'].includes(e.key))dy=0;
+if(['ArrowLeft','ArrowRight','a','d'].includes(e.key))dx=0;
 });
 })();
 </script>
